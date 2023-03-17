@@ -13,7 +13,6 @@ setup(
         'requests',
         'geopy',
         'tenacity',
-        'os',
         'unidecode',
         'random',
         'sqlite3',
