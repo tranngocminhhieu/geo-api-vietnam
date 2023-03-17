@@ -12,8 +12,13 @@ setup(
         'numpy',
         'requests',
         'geopy',
-        'tenacity'
-        'os'
+        'tenacity',
+        'os',
+        'unidecode',
+        'random',
+        'sqlite3',
+        'warnings',
+        're'
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -24,5 +29,6 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
 )
