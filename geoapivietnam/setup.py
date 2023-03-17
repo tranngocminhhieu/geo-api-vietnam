@@ -6,7 +6,7 @@ setup(
     description='A short description of your module',
     author='Tran Ngoc Minh Hieu',
     author_email='tnmhieu@gmail.com',
-    packages=['geoapivietnam'],
+    packages=find_packages(),
     install_requires=[
         'pandas',
         'numpy',
