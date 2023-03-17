@@ -14,7 +14,7 @@ setup(
         'geopy',
         'tenacity',
         'unidecode',
-        'geoapivietnam @ https://github.com/tranngocminhhieu/geo-api-vietnam.git#egg=geoapivietnam-0.1.0&subdirectory=geoapivietnam'
+        'geoapivietnam @ https://github.com/tranngocminhhieu/geo-api-vietnam.git#egg=geoapivietnam&subdirectory=geoapivietnam'
     ],
 
 
