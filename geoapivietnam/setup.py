@@ -14,8 +14,10 @@ setup(
         'geopy',
         'tenacity',
         'unidecode'
-        'geoapivietnam @ git+ssh://git@github.com/tranngocminhhieu/.git#subdirectory=geoapivietnam'
     ],
+
+    dependency_links=['https://github.com/tranngocminhhieu/geo-api-vietnam/tree/main/geoapivietnam#egg=geoapivietnam-0.1.0']
+
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
