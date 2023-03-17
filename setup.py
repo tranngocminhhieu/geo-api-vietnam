@@ -17,5 +17,5 @@ setup(
         'unidecode'
     ],
 
-    dependency_links = ['https://github.com/tranngocminhhieu/geo-api-vietnam.git#egg=geoapivietnam']
+    # dependency_links = ['https://github.com/tranngocminhhieu/geo-api-vietnam.git#egg=geoapivietnam']
 )
