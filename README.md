@@ -13,6 +13,7 @@ pip install git+https://github.com/tranngocminhhieu/geo-api-vietnam.git --upgrad
 ```
 
 ## How to use geoapivietnam
+Import module and read [Sample usage notebook](https://github.com/tranngocminhhieu/geo-api-vietnam/blob/main/notebook/sample-usage.ipynb) to explore this module.
 
 ```
 from geoapivietnam import correct_province, correct_district, get_address, get_district
