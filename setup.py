@@ -8,6 +8,7 @@ setup(
     author='Tran Ngoc Minh Hieu',
     author_email='tnmhieu@gmail.com',
     packages=['geoapivietnam'],
+    package_data={'geoapivietnam': ['data/*']},
     install_requires=[
         'pandas',
         'numpy',
