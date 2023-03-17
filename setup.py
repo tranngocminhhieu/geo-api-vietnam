@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='geoapivietnam',
-    version='0.1.0',
+    version='0.2.0',
     description='Geo API for Vietnam module',
     url='https://github.com/tranngocminhhieu/geo-api-vietnam',
     author='Tran Ngoc Minh Hieu',
