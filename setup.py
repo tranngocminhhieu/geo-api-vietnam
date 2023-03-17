@@ -7,7 +7,7 @@ setup(
     url='https://github.com/tranngocminhhieu/geo-api-vietnam',
     author='Tran Ngoc Minh Hieu',
     author_email='tnmhieu@gmail.com',
-    packages=find_packages(),
+    packages=['geoapivietnam'],
     install_requires=[
         'pandas',
         'numpy',
