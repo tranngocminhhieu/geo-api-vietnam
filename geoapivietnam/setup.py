@@ -6,7 +6,7 @@ setup(
     description='A short description of your module',
     author='Tran Ngoc Minh Hieu',
     author_email='tnmhieu@gmail.com',
-    packages=find_packages(),
+    packages=['geoapivietnam'],
     install_requires=[
         'pandas',
         'numpy',
@@ -14,18 +14,5 @@ setup(
         'geopy',
         'tenacity',
         'unidecode'
-    ],
-
-
-    classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
     ]
 )
