@@ -11,10 +11,10 @@ setup(
     package_data={'geoapivietnam': ['data/*']},
     install_requires=[
         'pandas',
-        'numpy',
         'requests',
         'geopy',
         'tenacity',
-        'unidecode'
+        'unidecode',
+        'openpyxl'
     ]
 )
