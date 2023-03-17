@@ -306,6 +306,5 @@ def get_district(province, search_term, database='../data/data.db', force_data_e
     print(f'-> Can not match district for {province} province, return address!')
     return address
 
-
 if __name__ == "__main__":
     pass
