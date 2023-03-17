@@ -14,7 +14,6 @@ setup(
         'geopy',
         'tenacity',
         'unidecode',
-        'random',
         'sqlite3',
         'warnings',
         're'
