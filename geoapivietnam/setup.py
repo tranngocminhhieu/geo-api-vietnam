@@ -13,10 +13,7 @@ setup(
         'requests',
         'geopy',
         'tenacity',
-        'unidecode',
-        'sqlite3',
-        'warnings',
-        're'
+        'unidecode'
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
