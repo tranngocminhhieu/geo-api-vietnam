@@ -21,7 +21,8 @@ setup(
         'requests',
         'geopy',
         'tenacity',
-        'unidecode'
+        'unidecode',
+        'geoapivietnam'
     ],
     zip_safe=False
 )
