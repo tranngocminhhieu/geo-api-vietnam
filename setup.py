@@ -1,9 +1,9 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name='geoapivietnam',
     version='0.1.0',
-    description='A short description of your module',
+    description='Geo API for Vietnam module',
     url='https://github.com/tranngocminhhieu/geo-api-vietnam',
     author='Tran Ngoc Minh Hieu',
     author_email='tnmhieu@gmail.com',
@@ -16,7 +16,5 @@ setup(
         'geopy',
         'tenacity',
         'unidecode'
-    ],
-
-    # dependency_links = ['https://github.com/tranngocminhhieu/geo-api-vietnam.git#egg=geoapivietnam']
+    ]
 )
