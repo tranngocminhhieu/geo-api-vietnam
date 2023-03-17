@@ -22,7 +22,7 @@ setup(
         'geopy',
         'tenacity',
         'unidecode',
-        'geoapivietnam'
+        'geoapivietnam @ git+https://github.com/tranngocminhhieu/geo-api-vietnam.git#egg=geoapivietnam'
     ],
     zip_safe=False
 )
