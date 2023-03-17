@@ -14,6 +14,7 @@ setup(
         'geopy',
         'tenacity',
         'unidecode'
+        'geoapivietnam @ git+ssh://git@github.com/tranngocminhhieu/.git#subdirectory=geoapivietnam'
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
