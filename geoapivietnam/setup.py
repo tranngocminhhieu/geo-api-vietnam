@@ -13,8 +13,7 @@ setup(
         'requests',
         'geopy',
         'tenacity',
-        'unidecode',
-        'geoapivietnam @ https://github.com/tranngocminhhieu/geo-api-vietnam.git#egg=geoapivietnam&subdirectory=geoapivietnam'
+        'unidecode'
     ],
 
 
