@@ -170,7 +170,7 @@ class GetLocation:
             force_data_excel = self.force_data_excel
 
         if google_maps_api_key == None:
-            google_maps_api_key == self.google_maps_api_key
+            google_maps_api_key = self.google_maps_api_key
 
         if print_result == None:
             print_result = self.print_result
