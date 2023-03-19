@@ -4,6 +4,7 @@ import re
 import sqlite3
 import warnings
 
+import numpy as np
 import pandas as pd
 import requests
 from geopy.geocoders import Nominatim
@@ -25,53 +26,79 @@ class SqliteActions:
 
         # Establish a connection to the database
         with sqlite3.connect(self.database) as conn:
-            # Create the historical_geo table if it doesn't already exist
+            # Create the historical_search table if it doesn't already exist
             conn.execute('''
-                CREATE TABLE IF NOT EXISTS historical_geo (
-                    geo TEXT PRIMARY KEY,
-                    address VARCHAR
+                CREATE TABLE IF NOT EXISTS historical_search (
+                    search_term TEXT PRIMARY KEY,
+                    address VARCHAR,
+                    province VARCHAR,
+                    district VARCHAR,
+                    ward VARCHAR,
+                    latitude FLOAT,
+                    longitude FLOAT,
+                    source VARCHAR,
+                    original_address VARCHAR
                 )
             ''')
 
-    def sqlite_select_address_from_database(self, geo):
+    def select_location_from_database(self, search_term):
         # Query the database for the address corresponding to the given geo
         with sqlite3.connect(self.database) as conn:
-            cursor = conn.execute('SELECT address FROM historical_geo WHERE geo = ?', (geo,))
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute('SELECT * FROM historical_search WHERE search_term = ?', (search_term,))
             result = cursor.fetchone()
             if result:
-                # If a result was found, return it as a string
-                return result[0]
+                # If a result was found, return it as a dict
+                return dict(result)
             else:
                 # If no data was found, return 'No-data'
                 return 'No-data'
 
-    def sqlite_append_or_update_data(self, geo, address):
-        # Check if the geo value already exists in the table
+    def append_or_update_data(self, search_term, json_data):
+        # Check if the search_term already exists in the table
         with sqlite3.connect(self.database) as conn:
-            cursor = conn.execute('SELECT geo FROM historical_geo WHERE geo = ?', (geo,))
+            cursor = conn.execute('SELECT search_term FROM historical_search WHERE search_term = ?', (search_term,))
             result = cursor.fetchone()
             if result:
-                # If the geo value exists, update the corresponding address
-                conn.execute('UPDATE historical_geo SET address = ? WHERE geo = ?', (address, geo))
+                # If the search_term exists, update the corresponding row
+                conn.execute('''UPDATE historical_search SET
+                                address = ?,
+                                province = ?,
+                                district = ?,
+                                ward = ?,
+                                latitude = ?,
+                                longitude = ?,
+                                source = ?,
+                                original_address = ?
+                                WHERE search_term = ?''',
+                             (json_data['address'], json_data['province'], json_data['district'],
+                              json_data['ward'], json_data['latitude'], json_data['longitude'],
+                              json_data['source'], json_data['original_address'], search_term))
             else:
-                # If the geo value doesn't exist, insert a new row with the given geo and address
-                conn.execute('INSERT INTO historical_geo (geo, address) VALUES (?, ?)', (geo, address))
+                # If the search_term doesn't exist, insert a new row with the given data
+                conn.execute('''INSERT INTO historical_search (
+                                    search_term, address, province, district, ward,
+                                    latitude, longitude, source, original_address)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                             (search_term, json_data['address'], json_data['province'], json_data['district'],
+                              json_data['ward'], json_data['latitude'], json_data['longitude'],
+                              json_data['source'], json_data['original_address']))
             # Commit the changes to the database
             conn.commit()
 
-    def sqlite_delete_data(self, geo):
-        # Check if the geo value exists in the table
+    def delete_data(self, search_term):
+        # Check if the search_term value exists in the table
         with sqlite3.connect(self.database) as conn:
-            cursor = conn.execute('SELECT geo FROM historical_geo WHERE geo = ?', (geo,))
+            cursor = conn.execute('SELECT search_term FROM historical_search WHERE search_term = ?', (search_term,))
             result = cursor.fetchone()
             if result:
-                # If the geo value exists, delete the corresponding row
-                conn.execute('DELETE FROM historical_geo WHERE geo = ?', (geo,))
+                # If the search_term value exists, delete the corresponding row
+                conn.execute('DELETE FROM historical_search WHERE search_term = ?', (search_term,))
                 # Commit the changes to the database
                 conn.commit()
             else:
-                # If the geo value doesn't exist, print an error message
-                print(f"Error: geo value '{geo}' does not exist in the table.")
+                # If the search_term value doesn't exist, print an error message
+                print(f"Error: search_term value '{search_term}' does not exist in the table.")
 
     def create_folder_if_not_exists(self, my_path):
         # Check if the input path contains a directory
@@ -129,7 +156,31 @@ class Correct:
 
         return 'No-data'
 
+# Object
+class Location:
+    def __init__(self, address=None, province=None, district=None, ward=None, latitude=None, longitude=None, source=None, original_address=None):
+        self.address = address
+        self.province = province
+        self.district = district
+        self.ward = ward
+        self.latitude = latitude
+        self.longitude = longitude
+        self.source = source
+        self.original_address = original_address
+        self.json_data = {
+            'address': self.address,
+            'province': self.province,
+            'district': self.district,
+            'ward': self.ward,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'source': self.source,
+            'original_address': self.original_address
+        }
 
+    def __repr__(self):
+        object_show = f'address: {self.address}, province: {self.province}, district: {self.district}, ward: {self.ward}, latitude: {self.latitude}, longitude: {self.longitude}, source: {self.source}, original_address: {self.original_address}'
+        return object_show
 # Main
 class GetLocation:
     def __init__(self, database='../data/data.db', google_maps_api_key=None, force_data_excel=None, print_result=True):
@@ -137,92 +188,216 @@ class GetLocation:
         data_dir = os.path.join(os.path.dirname(__file__), 'data')
         self.df_vn = pd.read_excel(os.path.join(data_dir, 'gso_province_district_ward.xlsx'))
         self.df_vn_district = self.df_vn[['province', 'district']].drop_duplicates().reset_index(drop=True)
+        self.df_valid_provinces = pd.read_excel(os.path.join(data_dir, 'valid_provinces.xlsx'))
         self.sqlite_actions = SqliteActions(database=self.database)
         self.print_result = print_result
         self.google_maps_api_key = google_maps_api_key
         self.force_data_excel = force_data_excel
 
+    def build_location(self, address, latitude, longitude, source):
+        address_ul = unidecode(str(address).lower())
+
+        # Prevent Google result District X or Ward X (X is number)
+        address_ul = address_ul.replace('district', 'quan').replace('ward', 'phuong')
+
+        # Find province
+        province = None
+        for o, a in zip(self.df_valid_provinces.original_province, self.df_valid_provinces.alias_province):
+            a_ul = unidecode(str(a).lower())
+            if a_ul in address_ul:
+                province = o
+                break
+            else:
+                province = None
+
+        # Find district
+        districts = self.df_vn[self.df_vn.short_province == province].district.drop_duplicates().tolist()
+        district = None
+        for d in districts:
+            d_ul = unidecode(str(d).lower())
+
+            # Remove prefix
+            if re.search(r'quan [0-9]{1,2}', d_ul):
+                pass
+            else:
+                for i in [r'^quan\s', '^q\.', r'^huyen\s', r'^h\.', r'^thi xa\s', r'^tx\.', r'^xa\s', r'^x\.',
+                          r'^thanh pho\s',
+                          r'^tp\.']:
+                    if re.search(i, d_ul):
+                        d_ul = re.sub(i, '', d_ul).strip()
+                        break
+            # Search
+            # Prevent quan 1 match with quan 1X
+            if re.search(r'quan [0-9]{1,2}', d_ul):
+                our_district_number = int(d_ul.split(" ")[-1])
+                find_address_dictrict = re.findall(r'quan [0-9]{1,2}', address_ul)
+                if len(find_address_dictrict):
+                    address_dictrict_number = int(find_address_dictrict[0].split(" ")[-1])
+                    if address_dictrict_number == our_district_number:
+                        district = d
+                        break
+
+            elif d_ul in address_ul:
+                district = d
+                break
+            else:
+                district = None
+
+        # if district == None: # GeoPy can return an address missing province (10.2262425, 103.9725849), need to improve
+        #     pass
+
+        # Find ward
+        wards = self.df_vn[(self.df_vn.short_province == province) & (self.df_vn.district == district)].ward.to_list()
+        ward = None
+        for w in wards:
+            w_ul = unidecode(str(w).lower())
+
+            # Remove prefix
+            if re.search(r'phuong [0-9]{1,2}', w_ul):
+                pass
+            else:
+                for i in [r'^phuong\s', r'^thi\stran\s', r'^xa\s', r'^huyen\s']:
+                    if re.search(i, w_ul):
+                        w_ul = re.sub(i, '', w_ul).strip()
+                        break
+
+            # Search
+            # Pevent phuong 1 match with phuong 1X
+            if re.search(r'phuong [0-9]{1,2}', w_ul):
+                our_ward_number = int(w_ul.split(" ")[-1])
+                find_address_ward = re.findall(r'phuong [0-9]{1,2}', address_ul)
+                if len(find_address_ward):
+                    address_ward_number = int(find_address_ward[0].split(" ")[-1])
+                    if address_ward_number == our_ward_number:
+                        ward = w
+                        break
+
+            elif w_ul in address_ul:
+                ward = w
+                break
+
+            else:
+                ward = None
+
+        new_address = f'{ward + ", " if ward != None else ""}{district + ", " if district != None else ""}{province if province != None else ""}'
+
+        return Location(address=new_address, province=province, district=district, ward=ward, latitude=latitude, longitude=longitude,
+                        source=source, original_address=address)
+
     @retry(wait=wait_fixed(30), stop=stop_after_attempt(10))
-    def geopy_get_address(self, search_term, user_agent='myGeocoder', random_user_agent_number=True):
+    def geopy_get_location(self, search_term, user_agent='myGeocoder', random_user_agent_number=True):
         if random_user_agent_number:
             user_agent = f'{user_agent}{random.choice(list(range(1000)))}'
         locator = Nominatim(user_agent=user_agent)
         location = locator.geocode(search_term)
         try:
             address = location.address
-            return address
-        except:
-            return 'No-data'
+            latitude = location.latitude
+            longitude = location.longitude
+            source = 'GeoPy'
 
-    def google_get_address(self, search_term, maps_api_key=None):
+            return self.build_location(address=address, latitude=latitude, longitude=longitude, source=source)
+
+        except Exception as e:
+            return Location(source='GeoPy', original_address=f'Error: {e}')
+
+    def google_get_location(self, search_term, maps_api_key=None):
         if maps_api_key == None:
             maps_api_key = self.google_maps_api_key
 
         url = f'https://maps.googleapis.com/maps/api/geocode/json?address={search_term}&key={maps_api_key}'
         try:
             res = requests.get(url)
-            return res.json()['results'][0]['formatted_address']
-        except Exception as e:
-            return f'Google API error: {e}'
+            data = res.json()
 
-    def get_address(self, search_term, force_data_excel=None, google_maps_api_key=None, print_result=None):
+            latitude = data['results'][0]['geometry']['location']['lat']
+            longitude =  data['results'][0]['geometry']['location']['lng']
+            address = data['results'][0]['formatted_address']
+            source = 'Google'
+
+            return self.build_location(address=address, latitude=latitude, longitude=longitude, source=source)
+
+        except Exception as e:
+            return Location(source='Google', original_address=f'Error: {e}')
+
+    def excel_get_location(self, search_term, force_data_excel=None):
         if force_data_excel == None:
             force_data_excel = self.force_data_excel
 
+        if force_data_excel != None and os.path.isfile(force_data_excel) == False:
+            self.sqlite_actions.create_folder_if_not_exists(my_path=force_data_excel)
+            pd.DataFrame(columns=['search_term', 'address', 'latitude', 'longitude']).to_excel(force_data_excel,
+                                                                                               index=False)
+
+        force_data = pd.read_excel(force_data_excel)
+        search_data = force_data[force_data.search_term == search_term].reset_index(drop=True)
+        search_data = search_data.replace({np.nan: None})
+
+        source = 'Excel'
+
+        if search_data.shape[0]:
+            address = search_data.address.to_list()[0]
+            latitude = search_data.latitude.to_list()[0]
+            longitude = search_data.longitude.to_list()[0]
+
+            return self.build_location(address=address, latitude=latitude, longitude=longitude, source=source)
+        else:
+            return Location(source=source, original_address='No-data')
+        
+    def sqlite_get_location(self, search_term):
+        source = 'SQLite'
+        search_result = self.sqlite_actions.select_location_from_database(search_term=search_term)
+        if search_result != 'No-data':
+
+            return Location(address=search_result['address'],
+                            province=search_result['province'],
+                            district=search_result['district'],
+                            ward=search_result['ward'],
+                            latitude=search_result['latitude'],
+                            longitude=search_result['longitude'],
+                            source=search_result['source'] + ' (SQLite)',
+                            original_address=search_result['original_address'])
+        else:
+            return Location(source=source, original_address='No-data')
+            
+    def manual_get_location(self, address, latitude=None, longitude=None, source='Manual'):
+        return self.build_location(address=address, latitude=latitude, longitude=longitude, source=source)
+
+    def get_location(self, search_term, force_data_excel=None, google_maps_api_key=None):
+        if force_data_excel == None:
+            force_data_excel = self.force_data_excel
         if google_maps_api_key == None:
             google_maps_api_key = self.google_maps_api_key
 
-        if print_result == None:
-            print_result = self.print_result
-
-        # Get from Excel
+        # From Excel first
         if force_data_excel != None and os.path.isfile(force_data_excel):
-            force_data = pd.read_excel(force_data_excel)
-            try:
-                list_address = force_data[force_data.geo == search_term].address.values.tolist()
-                if len(list_address):
-                    address = list_address[0]
-                    if print_result:
-                        print(f'Excel: {search_term} = {address}')
-                    return address + ' (by Excel)'
-            except:
-                self.sqlite_actions.create_folder_if_not_exists(my_path=force_data_excel)
-                pd.DataFrame({'geo': [], 'address': []}).to_excel(force_data_excel, index=False)
+            location = self.excel_get_location(search_term=search_term, force_data_excel=force_data_excel)
+            if location.original_address != 'No-data':
+                return location
 
-        # Get from SQLite
-        self.sqlite_actions.create_database()
-        address = self.sqlite_actions.sqlite_select_address_from_database(geo=search_term)
-        if address != 'No-data':
-            if print_result:
-                print(f'SQLite: {search_term} = {address}')
-            return address + ' (Saved data from SQlite)'
+        # From SQLite second
+        location = self.sqlite_get_location(search_term=search_term)
+        if location.original_address != 'No-data' and location.province != None:
+            return location
 
-        # Get from GeoPy
-        address = self.geopy_get_address(search_term=search_term)
-        if address != 'No-data':
-            self.sqlite_actions.sqlite_append_or_update_data(geo=search_term, address=address + ' (by GeoPy)')
-            if print_result:
-                print(f'GeoPy: {search_term} = {address}')
-            return address + ' (by GeoPy)'
-        else:
+        # From GeoPy third
+        location = self.geopy_get_location(search_term=search_term)
+        if 'Error' not in location.original_address and location.province != None:
+            self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
+            return location
 
-            # Get from Google API
-            if google_maps_api_key != None:
-                address = self.google_get_address(search_term=search_term, maps_api_key=google_maps_api_key)
-                if 'error' not in address.lower():
-                    self.sqlite_actions.sqlite_append_or_update_data(geo=search_term, address=address + ' (by Google)')
-                    if print_result:
-                        print(f'Google Geocoding: {search_term} = {address}')
-                    return address + ' (by Google)'
+        # From Google API forth
+        if google_maps_api_key != None:
+            location = self.google_get_location(search_term=search_term)
+            if 'Error' not in location.original_address:
+                self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
+                return location
 
-        # Can not found at all
-        if print_result:
-            print(f'Can not found {search_term} at all')
-        return 'No-data'
+        return location
 
-    def search_district_from_address(self, district, address):
-        district_ul = unidecode(district.lower())
-        address_ul = unidecode(address.lower())
+    def check_if_district_in_address(self, district, address):
+        district_ul = unidecode(str(district).lower())
+        address_ul = unidecode(str(address).lower())
 
         # Remove prefix
         if re.search(r'quan [0-9]{1,2}', district_ul):
@@ -244,13 +419,15 @@ class GetLocation:
         province_ul = unidecode(str(province).lower())
         address_ul = unidecode(str(address).lower())
 
+        address_ul = address_ul.replace('hanoi', 'ha noi')
+
         search_province = self.df_vn_district.province.apply(unidecode).str.lower().str.contains(province_ul)
 
-        # Remove long-Province to reduce mistake
+        # Remove long-Province to reduce mistake (Thanh pho Lai Chau, Tinh Lai Chau)
         long_province = unidecode(str(self.df_vn_district[search_province].province.tolist()[0]).lower())
         address_ul = address_ul.replace(long_province, '')
 
-        search_district = self.df_vn_district.district.apply(self.search_district_from_address, address=address_ul)
+        search_district = self.df_vn_district.district.apply(self.check_if_district_in_address, address=address_ul)
 
         try:
             district = self.df_vn_district[search_province & search_district].district.tolist()[0]
@@ -259,76 +436,39 @@ class GetLocation:
 
         return district
 
-    def extract_district_match_province(self, province, address, print_result=None):
-        if print_result == None:
-            print_result = self.print_result
-
-        province_ul = unidecode(str(province).lower())
-
-        replaces = {'Hanoi': 'Hà Nội'}
-        for i in replaces:
-            address = address.replace(i, replaces[i])
-
-        # Split address to list and reverse to repare for For loop (Province -> District -> Ward -> Street)
-        address_mod = address.split(', ')
-        address_mod = [i for i in address_mod if i.isnumeric() == False]  # Remove zip code
-        address_mod.reverse()
-
-        # Loop from left to right to search Province, we will have District on the right side
-        for i in address_mod:
-            if province_ul in unidecode(str(i).lower()):
-                try:  # Avoid no index for district error
-                    district = address_mod[address_mod.index(i) + 1]
-                    district = Correct().correct_district(province=province, district=district)
-                    if print_result:
-                        print(f'-> {district} district match with {province} province perfect!')
-                    return district
-                except:
-                    pass
-
-        # Miss Province in address
-        district = self.get_district_from_address_miss_province(province=province_ul, address=address)
-        district = Correct().correct_district(province=province, district=district)
-        if district != 'No-data':
-            if print_result:
-                print(f'-> {district} district match with {province} province when missing info!')
-            return district
-
-        print(f'-> Can not match district for {province} province by this address!')
-        return 'No-data'
-
-    def get_district(self, province, search_term, force_data_excel=None, google_maps_api_key=None,
-                     print_result=None):
-
+    def get_valid_district(self, province, search_term, force_data_excel=None, google_maps_api_key=None, print_result=None):
         if force_data_excel == None:
             force_data_excel = self.force_data_excel
-
         if google_maps_api_key == None:
             google_maps_api_key = self.google_maps_api_key
-
         if print_result == None:
             print_result = self.print_result
 
         search_term = str(search_term)
 
         # Get address
-        address = self.get_address(search_term=search_term, force_data_excel=force_data_excel,
-                                   google_maps_api_key=google_maps_api_key, print_result=print_result)
-        if address == 'No-data':
-            return 'No-data'
+        location = self.get_location(search_term=search_term, google_maps_api_key=google_maps_api_key, force_data_excel=force_data_excel)
 
-        district = self.extract_district_match_province(province, address, print_result=print_result)
-        if district != 'No-data':
-            return district
+        if location.province == province and location.district != None:
+            if print_result:
+                print(f'{location.district} district match with {province} province perfect! ({location.source})')
+            return location.district
 
-        if ('by Google' not in address) and ('by Excel' not in address) and (google_maps_api_key != None):
-            address = self.google_get_address(search_term, google_maps_api_key) + ' (by Google)'
-            self.sqlite_actions.sqlite_append_or_update_data(geo=search_term, address=address)
-            print(f'-> Get new address from Google API: {address}')
-            district = self.extract_district_match_province(province, address, print_result=print_result)
+        if location.province == None and 'No-data' not in location.original_address and 'Error' not in location.original_address:
+            district = self.get_district_from_address_miss_province(province=province, address=location.original_address)
             if district != 'No-data':
+                if print_result:
+                    print(f'{district} district match with {province} province when missing info! ({location.source})')
                 return district
+
+        if location.source not in ['Google', 'Excel'] and google_maps_api_key != None:
+            location = self.google_get_location(search_term=search_term, google_maps_api_key=google_maps_api_key)
+            self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
+            if location.province == province and location.district != None:
+                if print_result:
+                    print(f'{location.district} district match with {province} province perfect! ({location.source})')
+                return location.district
 
         # Can not find district from address, return address to explore later
         print(f'-> Can not match district for {province} province, return address!')
-        return address
+        return f'{location.address} ({location.source})'
