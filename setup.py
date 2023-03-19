@@ -5,7 +5,7 @@ README = (Path(__file__).parent / "README.md").read_text()
 
 setup(
     name='geoapivietnam',
-    version='0.2.0',
+    version='0.2.1',
     description='Geo API for Vietnam module',
     long_description=README,
     long_description_content_type="text/markdown",
