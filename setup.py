@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='geoapivietnam',
@@ -7,7 +7,7 @@ setup(
     url='https://github.com/tranngocminhhieu/geo-api-vietnam',
     author='Tran Ngoc Minh Hieu',
     author_email='tnmhieu@gmail.com',
-    packages=['src/geoapivietnam'],
+    packages=find_packages(),
     package_data={'geoapivietnam': ['data/*']},
     install_requires=[
         'pandas',
