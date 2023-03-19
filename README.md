@@ -20,8 +20,9 @@ Location object with properties:
 ## How it works
 
 - Use Vietnam location data to clean up and correct typos.
-- Use APIs from GeoPy and Google Maps to search for locations online.
+- Use APIs from [GeoPy](https://pypi.org/project/geopy/) and Google Maps ([Google Geocoding](https://developers.google.com/maps/documentation/geocoding)) to search for locations online.
 - Use Excel and SQLite to save data locally.
+- Search location in smart order: Excel > SQLite > GeoPy > Google Maps.
 
 ## How to install
 Run this command in Terminal (CMD).
