@@ -25,12 +25,29 @@ Location object with properties:
 - Search location in smart order: Excel > SQLite > GeoPy > Google Maps.
 
 ## How to install
-Run this command in Terminal (CMD).
+### Install with Pip
+
+Install new package.
+
+```
+pip install geoapivietnam
+```
+
+Upgrade to the latest version.
+
+```
+pip install geoapivietnam --upgrade
+```
+
+### Install with GitHub
+
+Install new package.
+
 ```
 pip install git+https://github.com/tranngocminhhieu/geo-api-vietnam.git
 ```
 
-Use this command to update geoapivietnam.
+Upgrade to the latest version.
 
 ```
 pip install git+https://github.com/tranngocminhhieu/geo-api-vietnam.git --upgrade
