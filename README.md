@@ -2,6 +2,8 @@
 
 Geo API Vietnam is a package that helps you find locations in Vietnam with strongly cleaned data.
 
+![Pypi](https://img.shields.io/pypi/dm/geoapivietnam) ![MIT](https://img.shields.io/github/license/tranngocminhhieu/geo-api-vietnam)
+
 Main fuction:
 - Clean up and correct spelling for Province and District.
 - Search location by keyword or coordinates.
