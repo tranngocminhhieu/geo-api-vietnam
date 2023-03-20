@@ -122,6 +122,11 @@ class Correct:
         self.df_vn_district = self.df_vn[['province', 'district']].drop_duplicates().reset_index(drop=True)
 
     def correct_province(self, province):
+        '''
+
+        :param province: Input province name information as string.
+        :return: Output province name correctly.
+        '''
         province_ul = unidecode(str(province).lower())
         for o, a, in zip(self.df_valid_provinces.original_province, self.df_valid_provinces.alias_province):
             o_ul = unidecode(str(o).lower())
@@ -132,6 +137,12 @@ class Correct:
         return 'No-data'
 
     def correct_district(self, province, district):
+        '''
+
+        :param province: Input province name correctly as string.
+        :param district: Input district name information as string.
+        :return: Output district name correctly.
+        '''
         province_ul = unidecode(str(province).lower())
         district_ul = unidecode(str(district).lower())
 
