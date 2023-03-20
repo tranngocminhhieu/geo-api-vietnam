@@ -14,11 +14,11 @@ import appdirs
 
 warnings.filterwarnings('ignore')
 
-data_dir = appdirs.user_data_dir('geoapivietnam/geoapivietnam.db')
+geoapivietnam_sqlite_file = appdirs.user_data_dir('geoapivietnam/geoapivietnam.db')
 
 # Sqlite actions
 class SqliteActions:
-    def __init__(self, database=data_dir):
+    def __init__(self, database=geoapivietnam_sqlite_file):
         self.database = database
         self.create_database()
 
@@ -196,7 +196,7 @@ class Location:
         return object_show
 # Main
 class GetLocation:
-    def __init__(self, database=data_dir, google_maps_api_key=None, force_data_excel=None, print_result=True):
+    def __init__(self, database=geoapivietnam_sqlite_file, google_maps_api_key=None, force_data_excel=None, print_result=True):
         self.database = database
         data_dir = os.path.join(os.path.dirname(__file__), 'data')
         self.df_vn = pd.read_excel(os.path.join(data_dir, 'gso_province_district_ward.xlsx'))
