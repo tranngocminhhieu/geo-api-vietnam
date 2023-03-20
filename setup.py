@@ -5,7 +5,7 @@ README = (Path(__file__).parent / "README.md").read_text()
 
 setup(
     name='geoapivietnam',
-    version='0.2.1',
+    version='0.2.2',
     description='Optimized Geo API for Vietnam',
     long_description=README,
     long_description_content_type="text/markdown",
@@ -20,6 +20,7 @@ setup(
         'geopy',
         'tenacity',
         'unidecode',
-        'openpyxl'
+        'openpyxl',
+        'appdirs'
     ]
 )
