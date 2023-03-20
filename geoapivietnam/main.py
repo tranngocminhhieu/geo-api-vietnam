@@ -16,7 +16,7 @@ warnings.filterwarnings('ignore')
 
 # Sqlite actions
 class SqliteActions:
-    def __init__(self, database='../data/data.db'):
+    def __init__(self, database='data/geoapivietnam.db'):
         self.database = database
         self.create_database()
 
@@ -183,7 +183,7 @@ class Location:
         return object_show
 # Main
 class GetLocation:
-    def __init__(self, database='../data/data.db', google_maps_api_key=None, force_data_excel=None, print_result=True):
+    def __init__(self, database='data/geoapivietnam.db', google_maps_api_key=None, force_data_excel=None, print_result=True):
         self.database = database
         data_dir = os.path.join(os.path.dirname(__file__), 'data')
         self.df_vn = pd.read_excel(os.path.join(data_dir, 'gso_province_district_ward.xlsx'))
