@@ -475,7 +475,7 @@ class GetLocation:
                 return district
 
         if location.source not in ['Google', 'Excel'] and google_maps_api_key != None:
-            location = self.google_get_location(search_term=search_term, google_maps_api_key=google_maps_api_key)
+            location = self.google_get_location(search_term=search_term, maps_api_key=google_maps_api_key)
             self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
             if location.province == province and location.district != None:
                 if print_result:
@@ -483,5 +483,5 @@ class GetLocation:
                 return location.district
 
         # Can not find district from address, return address to explore later
-        print(f'-> Can not match district for {province} province, return address!')
+        print(f'Can not match district for {province} province, return address!')
         return f'{location.address} ({location.source})'
