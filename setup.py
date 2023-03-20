@@ -6,7 +6,7 @@ README = (Path(__file__).parent / "README.md").read_text()
 setup(
     name='geoapivietnam',
     version='0.2.1',
-    description='Geo API for Vietnam module',
+    description='Optimized Geo API for Vietnam',
     long_description=README,
     long_description_content_type="text/markdown",
     url='https://github.com/tranngocminhhieu/geo-api-vietnam',
