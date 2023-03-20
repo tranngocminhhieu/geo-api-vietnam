@@ -2,7 +2,7 @@
 
 Geo API Vietnam is a package that helps you find locations in Vietnam with strongly cleaned data.
 
-![https://github.com/tranngocminhhieu/geo-api-vietnam](https://img.shields.io/pypi/dm/geoapivietnam) ![https://github.com/tranngocminhhieu/geo-api-vietnam/blob/main/LICENSE](https://img.shields.io/github/license/tranngocminhhieu/geo-api-vietnam) ![https://pypi.org/project/geoapivietnam/](https://img.shields.io/pypi/v/geoapivietnam)
+[![https://github.com/tranngocminhhieu/geo-api-vietnam](https://img.shields.io/pypi/dm/geoapivietnam)](https://pypi.org/project/geoapivietnam/) [![MIT](https://img.shields.io/github/license/tranngocminhhieu/geo-api-vietnam)](https://github.com/tranngocminhhieu/geo-api-vietnam/blob/main/LICENSE) [![Pypi](https://img.shields.io/pypi/v/geoapivietnam)](https://pypi.org/project/geoapivietnam)
 
 Main fuction:
 - Clean up and correct spelling for Province and District.
