@@ -324,6 +324,10 @@ class GetLocation:
             res = requests.get(url)
             data = res.json()
 
+            if data.get('error_message') != None:
+                print(f'Google: {data.get('error_message')}')
+                return Location(source='Google', original_address=f'Error: {data.get('error_message')}')
+
             latitude = data['results'][0]['geometry']['location']['lat']
             longitude =  data['results'][0]['geometry']['location']['lng']
             address = data['results'][0]['formatted_address']
