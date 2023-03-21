@@ -213,15 +213,21 @@ class GetLocation:
         # Prevent Google result District X or Ward X (X is number)
         address_ul = address_ul.replace('district', 'quan').replace('ward', 'phuong')
 
+        address_split = address_ul.split(',')
+        address_split = [i.strip() for i in address_split if (i.strip().isnumeric()==False and i.strip() not in ['vietnam', 'viet nam'])]
+        address_split.reverse()
+
         # Find province
-        province = None
-        for o, a in zip(self.df_valid_provinces.original_province, self.df_valid_provinces.alias_province):
-            a_ul = unidecode(str(a).lower())
-            if a_ul in address_ul:
-                province = o
-                break
-            else:
-                province = None
+        province = None # Set default if not match
+
+        for part in address_split:
+            for o, a in zip(self.df_valid_provinces.original_province, self.df_valid_provinces.alias_province):
+                a_ul = unidecode(str(a).lower())
+                if a_ul in part:
+                    province = o
+                    break
+                else:
+                    province = None
 
         # Find district
         districts = self.df_vn[self.df_vn.short_province == province].district.drop_duplicates().tolist()
@@ -325,11 +331,11 @@ class GetLocation:
             data = res.json()
 
             if data.get('error_message') != None:
-                print(f'Google: {data.get('error_message')}')
-                return Location(source='Google', original_address=f'Error: {data.get('error_message')}')
+                print(f'Google: {data.get("error_message")}')
+                return Location(source='Google', original_address=f'Error: {data.get("error_message")}')
 
             latitude = data['results'][0]['geometry']['location']['lat']
-            longitude =  data['results'][0]['geometry']['location']['lng']
+            longitude = data['results'][0]['geometry']['location']['lng']
             address = data['results'][0]['formatted_address']
             source = 'Google'
 
