@@ -221,10 +221,8 @@ class GetLocation:
         province = None # Set default if not match
 
         for part in address_split:
-            print(part)
             for o, a in zip(self.df_valid_provinces.original_province, self.df_valid_provinces.alias_province):
                 a_ul = unidecode(str(a).lower())
-                print(part, '|', a_ul)
                 if a_ul in part:
                     province = o
                     break
