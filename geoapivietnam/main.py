@@ -228,6 +228,7 @@ class GetLocation:
                     break
                 else:
                     province = None
+            break
 
         # Find district
         districts = self.df_vn[self.df_vn.short_province == province].district.drop_duplicates().tolist()
