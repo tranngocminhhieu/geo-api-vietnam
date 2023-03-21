@@ -314,6 +314,7 @@ class GetLocation:
         except Exception as e:
             return Location(source='GeoPy', original_address=f'Error: {e}')
 
+    @retry(wait=wait_fixed(30), stop=stop_after_attempt(10))
     def google_get_location(self, search_term, maps_api_key=None):
         if maps_api_key == None:
             maps_api_key = self.google_maps_api_key
@@ -394,17 +395,23 @@ class GetLocation:
             return location
 
         # From GeoPy third
-        location = self.geopy_get_location(search_term=search_term)
-        if 'Error' not in location.original_address and location.province != None:
-            self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
-            return location
+        try:
+            location = self.geopy_get_location(search_term=search_term)
+            if 'Error' not in location.original_address and location.province != None:
+                self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
+                return location
+        except Exception as e:
+            location = Location(source='GeoPy', original_address=f'Error: {e}')
 
         # From Google API forth
         if google_maps_api_key != None:
-            location = self.google_get_location(search_term=search_term)
-            if 'Error' not in location.original_address:
-                self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
-                return location
+            try:
+                location = self.google_get_location(search_term=search_term)
+                if 'Error' not in location.original_address:
+                    self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
+                    return location
+            except Exception as e:
+                location = Location(source='Google', original_address=f'Error: {e}')
 
         return location
 
@@ -474,13 +481,16 @@ class GetLocation:
                     print(f'{district} district match with {province} province when missing info! ({location.source})')
                 return district
 
-        if location.source not in ['Google', 'Excel'] and google_maps_api_key != None:
-            location = self.google_get_location(search_term=search_term, maps_api_key=google_maps_api_key)
-            self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
-            if location.province == province and location.district != None:
-                if print_result:
-                    print(f'{location.district} district match with {province} province perfect! ({location.source})')
-                return location.district
+        if (location.source not in ['Google', 'Excel']) and (google_maps_api_key != None):
+            try:
+                location = self.google_get_location(search_term=search_term, maps_api_key=google_maps_api_key)
+                self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
+                if location.province == province and location.district != None:
+                    if print_result:
+                        print(f'{location.district} district match with {province} province perfect! ({location.source})')
+                    return location.district
+            except Exception as e:
+                location = Location(source='Google', original_address=f'Error: {e}')
 
         # Can not find district from address, return address to explore later
         print(f'Can not match district for {province} province, return address! ({location.source})')
