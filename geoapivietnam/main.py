@@ -32,7 +32,8 @@ def color(color_name):
         'Blue': 34,
         'Magenta': 35,
         'Cyan': 36,
-        'White': 37
+        'White': 37,
+        'Default': 0
     }
     return f"\033[{color_codes.get(color_name.capitalize())}m"
 
@@ -170,8 +171,9 @@ class SqliteActions:
 
 
 class Correct:
-    def __init__(self, use_fuzzy=True):
+    def __init__(self, use_fuzzy=True, print_result=True):
         self.use_fuzzy = use_fuzzy
+        self.print_result = print_result
     def get_fuzzy_ratio(self, string_1, string_2):
         string_1_ul = unidecode(str(string_1).lower())
         string_2_ul = unidecode(str(string_2).lower())
@@ -183,15 +185,19 @@ class Correct:
         :param province: Input province name information as string.
         :return: Output province name correctly.
         '''
-        province_ul = get_province_sul(province)
+        province_sul = get_province_sul(province)
         for o, a_sul, in zip(df_valid_provinces.original_province, df_valid_provinces.alias_province_sul):
 
-            if a_sul in province_ul:
+            if a_sul in province_sul:
+                if self.print_result:
+                    print(f'{color("White")}{province}{color("Default")} is correct to {color("Green")}{o}{color("Default")}')
                 return o
 
             if self.use_fuzzy:
-                ratio = self.get_fuzzy_ratio(a_sul, province_ul)
+                ratio = self.get_fuzzy_ratio(a_sul, province_sul)
                 if ratio >= fuzzy_ratio:
+                    if self.print_result:
+                        print(f'{color("White")}{province}{color("Default")} is correct to {color("Green")}{o}{color("Default")} by Fuzzy!')
                     return o
 
         return 'No-data'
@@ -203,18 +209,18 @@ class Correct:
         :param district: Input district name information as string.
         :return: Output district name correctly.
         '''
-        province_ul = get_province_sul(province)
-        district_ul = get_district_sul(district)
+        province_sul = get_province_sul(province)
+        district_sul = get_district_sul(district)
 
         # Search
         for p_sul, d_sul, d in zip(df_vn_district.province_sul, df_vn_district.district_sul, df_vn_district.district):
 
-            if province_ul in p_sul and district_ul in d_sul:
+            if province_sul in p_sul and district_sul in d_sul:
                 return d
 
             if self.use_fuzzy:
-                ratio_1 = self.get_fuzzy_ratio(province_ul, p_sul)
-                ratio_2 = self.get_fuzzy_ratio(district_ul, d_sul)
+                ratio_1 = self.get_fuzzy_ratio(province_sul, p_sul)
+                ratio_2 = self.get_fuzzy_ratio(district_sul, d_sul)
                 if ratio_1 >= fuzzy_ratio_province and ratio_2 >= fuzzy_ratio_district:
                     return d
 
@@ -503,14 +509,14 @@ class GetLocation:
 
         if location.province == province and location.district != None:
             if print_result:
-                print(f'{color("Green")}{location.district}{color("Black")} match with {color("Green")}{province}{color("Black")} perfect! {color("White")}({location.source})')
+                print(f'{color("Green")}{location.district}{color("Default")} match with {color("Green")}{province}{color("Default")} perfect! {color("White")}({location.source})')
             return location.district
 
         if location.province == None and 'No-data' not in location.original_address and 'Error' not in location.original_address:
             district = self.get_district_from_address_miss_province(province=province, address=location.original_address)
             if district != 'No-data':
                 if print_result:
-                    print(f'{color("Green")}{district}{color("Black")} match with {color("Green")}{province}{color("Black")} when missing info! {color("White")}({location.source})')
+                    print(f'{color("Green")}{district}{color("Default")} match with {color("Green")}{province}{color("Default")} when missing info! {color("White")}({location.source})')
                 return district
 
         if (location.source not in ['Google', 'Excel']) and (google_maps_api_key != None):
@@ -519,11 +525,11 @@ class GetLocation:
                 self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
                 if location.province == province and location.district != None:
                     if print_result:
-                        print(f'{color("Green")}{location.district}{color("Black")} match with {color("Green")}{province}{color("Black")} perfect! {color("White")}({location.source})')
+                        print(f'{color("Green")}{location.district}{color("Default")} match with {color("Green")}{province}{color("Default")} perfect! {color("White")}({location.source})')
                     return location.district
             except Exception as e:
                 location = Location(source='Google', original_address=f'Error: {e}')
 
         # Can not find district from address, return address to explore later
-        print(f'Can not match {color("Red")}{location.address}{color("Black")} with {color("Red")}{province}{color("Black")}, return address! {color("White")}({location.source})')
+        print(f'Can not match {color("Red")}{location.address}{color("Default")} with {color("Red")}{province}{color("Default")}, return address! {color("White")}({location.source})')
         return f'Not-match: {location.address} ({location.source})'
