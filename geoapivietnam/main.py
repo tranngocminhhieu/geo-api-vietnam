@@ -186,11 +186,14 @@ class Correct:
         :return: Output province name correctly.
         '''
         province_sul = get_province_sul(province)
+
+        is_match = False
         for o, a_sul, in zip(df_valid_provinces.original_province, df_valid_provinces.alias_province_sul):
 
             if a_sul in province_sul:
                 if self.print_result:
                     print(f'{color("White")}{province}{color("Default")} is correct to {color("Green")}{o}{color("Default")}')
+                is_match = True
                 return o
 
             if self.use_fuzzy:
@@ -198,8 +201,10 @@ class Correct:
                 if ratio >= fuzzy_ratio:
                     if self.print_result:
                         print(f'{color("White")}{province}{color("Default")} is correct to {color("Green")}{o}{color("Default")} by Fuzzy!')
+                    is_match = True
                     return o
-
+        if is_match == False:
+            print(f'Can not correct for {color("Red")}{province}{color("Default")}, return "No-data"')
         return 'No-data'
 
     def correct_district(self, province, district, fuzzy_ratio_province=95, fuzzy_ratio_district=95):
@@ -212,18 +217,26 @@ class Correct:
         province_sul = get_province_sul(province)
         district_sul = get_district_sul(district)
 
+        is_match = False
         # Search
         for p_sul, d_sul, d in zip(df_vn_district.province_sul, df_vn_district.district_sul, df_vn_district.district):
 
             if province_sul in p_sul and district_sul in d_sul:
+                if self.print_result:
+                    print(f'{color("White")}{district}{color("Default")} is correct to {color("Green")}{d}{color("Default")}')
+                is_match = True
                 return d
 
             if self.use_fuzzy:
                 ratio_1 = self.get_fuzzy_ratio(province_sul, p_sul)
                 ratio_2 = self.get_fuzzy_ratio(district_sul, d_sul)
                 if ratio_1 >= fuzzy_ratio_province and ratio_2 >= fuzzy_ratio_district:
+                    if self.print_result:
+                        print(f'{color("White")}{district}{color("Default")} is correct to {color("Green")}{d}{color("Default")} by Fuzzy!')
+                    is_match = True
                     return d
-
+        if is_match == False:
+            print(f'Can not correct for {color("Red")}{district}{color("Default")}, return "No-data"')
         return 'No-data'
 
 # Object
