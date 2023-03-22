@@ -256,6 +256,7 @@ class GetLocation:
     def __init__(self, database=geoapivietnam_sqlite_file, google_maps_api_key=None, force_data_excel=None, print_result=True):
         self.database = database
         self.sqlite_actions = SqliteActions(database=self.database)
+        self.correct = Correct(print_result=False)
         self.print_result = print_result
         self.google_maps_api_key = google_maps_api_key
         self.force_data_excel = force_data_excel
@@ -502,7 +503,7 @@ class GetLocation:
             print_result = self.print_result
 
         search_term = str(search_term)
-        province = Correct().correct_province(province)
+        province = self.correct.correct_province(province)
 
         # Get address
         location = self.get_location(search_term=search_term, google_maps_api_key=google_maps_api_key, force_data_excel=force_data_excel)
