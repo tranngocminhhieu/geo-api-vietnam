@@ -11,10 +11,63 @@ from geopy.geocoders import Nominatim
 from tenacity import *
 from unidecode import unidecode
 import appdirs
+from fuzzywuzzy import fuzz
 
 warnings.filterwarnings('ignore')
 
+# Variables
 geoapivietnam_sqlite_file = appdirs.user_data_dir('geoapivietnam/geoapivietnam.db')
+data_dir = os.path.join(os.path.dirname(__file__), 'data')
+df_valid_provinces = pd.read_excel(os.path.join(data_dir, 'valid_provinces.xlsx'))
+df_vn = pd.read_excel(os.path.join(data_dir, 'gso_province_district_ward.xlsx'))
+df_vn_district = df_vn[['province', 'district', 'province_sul', 'district_sul']].drop_duplicates().reset_index(drop=True)
+
+def color(color_name):
+    # ANSI escape sequences
+    color_codes = {
+        'Black': 30,
+        'Red': 31,
+        'Green': 32,
+        'Yellow': 33,
+        'Blue': 34,
+        'Magenta': 35,
+        'Cyan': 36,
+        'White': 37
+    }
+    return f"\033[{color_codes.get(color_name.capitalize())}m"
+
+# Get Short Unidecode Lower (SUL) data
+def get_province_sul(province):
+    province_ul = unidecode(str(province).lower())
+    for i in [r'^tinh\s', r'^thanh\spho\s', r'^tp.']:
+        if re.search(i, province_ul):
+            province_ul = re.sub(i, '', province_ul).strip()
+            break
+    return province_ul
+
+def get_district_sul(district):
+    district_ul = unidecode(str(district).lower())
+    if re.search(r'quan [0-9]{1,2}', district_ul):
+        pass
+    else:
+        for i in [r'^quan\s', '^q\.', r'^huyen\s', r'^h\.', r'^thi xa\s', r'^tx\.', r'^xa\s', r'^x\.',
+                  r'^thanh pho\s',
+                  r'^tp\.']:
+            if re.search(i, district_ul):
+                district_ul = re.sub(i, '', district_ul).strip()
+                break
+    return district_ul
+
+def get_ward_sul(ward):
+    ward_ul = unidecode(str(ward).lower())
+    if re.search(r'phuong [0-9]{1,2}', ward_ul):
+        pass
+    else:
+        for i in [r'^phuong\s', r'^thi\stran\s', r'^xa\s', r'^huyen\s']:
+            if re.search(i, ward_ul):
+                ward_ul = re.sub(i, '', ward_ul).strip()
+                break
+    return ward_ul
 
 # Sqlite actions
 class SqliteActions:
@@ -117,55 +170,53 @@ class SqliteActions:
 
 
 class Correct:
-    def __init__(self):
-        data_dir = os.path.join(os.path.dirname(__file__), 'data')
-        self.df_valid_provinces = pd.read_excel(os.path.join(data_dir, 'valid_provinces.xlsx'))
-        self.df_vn = pd.read_excel(os.path.join(data_dir, 'gso_province_district_ward.xlsx'))
-        self.df_vn_district = self.df_vn[['province', 'district']].drop_duplicates().reset_index(drop=True)
+    def __init__(self, use_fuzzy=True):
+        self.use_fuzzy = use_fuzzy
+    def get_fuzzy_ratio(self, string_1, string_2):
+        string_1_ul = unidecode(str(string_1).lower())
+        string_2_ul = unidecode(str(string_2).lower())
+        return fuzz.ratio(string_1_ul, string_2_ul)
 
-    def correct_province(self, province):
+    def correct_province(self, province, fuzzy_ratio=95):
         '''
 
         :param province: Input province name information as string.
         :return: Output province name correctly.
         '''
-        province_ul = unidecode(str(province).lower())
-        for o, a, in zip(self.df_valid_provinces.original_province, self.df_valid_provinces.alias_province):
-            o_ul = unidecode(str(o).lower())
-            a_ul = unidecode(str(a).lower())
+        province_ul = get_province_sul(province)
+        for o, a_sul, in zip(df_valid_provinces.original_province, df_valid_provinces.alias_province_sul):
 
-            if a_ul in province_ul:
+            if a_sul in province_ul:
                 return o
+
+            if self.use_fuzzy:
+                ratio = self.get_fuzzy_ratio(a_sul, province_ul)
+                if ratio >= fuzzy_ratio:
+                    return o
+
         return 'No-data'
 
-    def correct_district(self, province, district):
+    def correct_district(self, province, district, fuzzy_ratio_province=95, fuzzy_ratio_district=95):
         '''
 
         :param province: Input province name correctly as string.
         :param district: Input district name information as string.
         :return: Output district name correctly.
         '''
-        province_ul = unidecode(str(province).lower())
-        district_ul = unidecode(str(district).lower())
-
-        # Remove prefix
-        if re.search(r'quan [0-9]{1,2}', district_ul):
-            pass
-        else:
-            for i in [r'^quan\s', '^q\.', r'^huyen\s', r'^h\.', r'^thi xa\s', r'^tx\.', r'^xa\s', r'^x\.',
-                      r'^thanh pho\s',
-                      r'^tp\.']:
-                if re.search(i, district_ul):
-                    district_ul = re.sub(i, '', district_ul).strip()
-                    break
+        province_ul = get_province_sul(province)
+        district_ul = get_district_sul(district)
 
         # Search
-        for p, d in zip(self.df_vn_district.province, self.df_vn_district.district):
-            p_ul = unidecode(str(p).lower())
-            d_ul = unidecode(str(d).lower())
+        for p_sul, d_sul, d in zip(df_vn_district.province_sul, df_vn_district.district_sul, df_vn_district.district):
 
-            if province_ul in p_ul and district_ul in d_ul:
+            if province_ul in p_sul and district_ul in d_sul:
                 return d
+
+            if self.use_fuzzy:
+                ratio_1 = self.get_fuzzy_ratio(province_ul, p_sul)
+                ratio_2 = self.get_fuzzy_ratio(district_ul, d_sul)
+                if ratio_1 >= fuzzy_ratio_province and ratio_2 >= fuzzy_ratio_district:
+                    return d
 
         return 'No-data'
 
@@ -198,10 +249,6 @@ class Location:
 class GetLocation:
     def __init__(self, database=geoapivietnam_sqlite_file, google_maps_api_key=None, force_data_excel=None, print_result=True):
         self.database = database
-        data_dir = os.path.join(os.path.dirname(__file__), 'data')
-        self.df_vn = pd.read_excel(os.path.join(data_dir, 'gso_province_district_ward.xlsx'))
-        self.df_vn_district = self.df_vn[['province', 'district']].drop_duplicates().reset_index(drop=True)
-        self.df_valid_provinces = pd.read_excel(os.path.join(data_dir, 'valid_provinces.xlsx'))
         self.sqlite_actions = SqliteActions(database=self.database)
         self.print_result = print_result
         self.google_maps_api_key = google_maps_api_key
@@ -221,42 +268,29 @@ class GetLocation:
         province = None # Set default if not match
 
         for part in address_split:
-            for o, a in zip(self.df_valid_provinces.original_province, self.df_valid_provinces.alias_province):
-                a_ul = unidecode(str(a).lower())
-                if a_ul in part:
+            for o, a_sul in zip(df_valid_provinces.original_province, df_valid_provinces.alias_province_sul):
+                if a_sul in part:
                     province = o
                     break
             if province != None:
                 break
 
         # Find district
-        districts = self.df_vn[self.df_vn.short_province == province].district.drop_duplicates().tolist()
+        districts = df_vn[df_vn.short_province == province][['district', 'district_sul']].drop_duplicates()
         district = None
-        for d in districts:
-            d_ul = unidecode(str(d).lower())
+        for d, d_sul in zip(districts.district, districts.district_sul):
 
-            # Remove prefix
-            if re.search(r'quan [0-9]{1,2}', d_ul):
-                pass
-            else:
-                for i in [r'^quan\s', '^q\.', r'^huyen\s', r'^h\.', r'^thi xa\s', r'^tx\.', r'^xa\s', r'^x\.',
-                          r'^thanh pho\s',
-                          r'^tp\.']:
-                    if re.search(i, d_ul):
-                        d_ul = re.sub(i, '', d_ul).strip()
-                        break
-            # Search
             # Prevent quan 1 match with quan 1X
-            if re.search(r'quan [0-9]{1,2}', d_ul):
-                our_district_number = int(d_ul.split(" ")[-1])
-                find_address_dictrict = re.findall(r'quan [0-9]{1,2}', address_ul)
-                if len(find_address_dictrict):
-                    address_dictrict_number = int(find_address_dictrict[0].split(" ")[-1])
-                    if address_dictrict_number == our_district_number:
+            if re.search(r'quan [0-9]{1,2}', d_sul):
+                our_district_number = int(d_sul.split(" ")[-1])
+                find_address_district = re.findall(r'quan [0-9]{1,2}', address_ul)
+                if len(find_address_district):
+                    address_district_number = int(find_address_district[0].split(" ")[-1])
+                    if address_district_number == our_district_number:
                         district = d
                         break
 
-            elif d_ul in address_ul:
+            elif d_sul in address_ul:
                 district = d
                 break
             else:
@@ -266,24 +300,13 @@ class GetLocation:
         #     pass
 
         # Find ward
-        wards = self.df_vn[(self.df_vn.short_province == province) & (self.df_vn.district == district)].ward.to_list()
+        wards = df_vn[(df_vn.short_province == province) & (df_vn.district == district)][['ward', 'ward_sul']]
         ward = None
-        for w in wards:
-            w_ul = unidecode(str(w).lower())
-
-            # Remove prefix
-            if re.search(r'phuong [0-9]{1,2}', w_ul):
-                pass
-            else:
-                for i in [r'^phuong\s', r'^thi\stran\s', r'^xa\s', r'^huyen\s']:
-                    if re.search(i, w_ul):
-                        w_ul = re.sub(i, '', w_ul).strip()
-                        break
-
+        for w, w_sul in zip(wards.ward, wards.ward_sul):
             # Search
             # Pevent phuong 1 match with phuong 1X
-            if re.search(r'phuong [0-9]{1,2}', w_ul):
-                our_ward_number = int(w_ul.split(" ")[-1])
+            if re.search(r'phuong [0-9]{1,2}', w_sul):
+                our_ward_number = int(w_sul.split(" ")[-1])
                 find_address_ward = re.findall(r'phuong [0-9]{1,2}', address_ul)
                 if len(find_address_ward):
                     address_ward_number = int(find_address_ward[0].split(" ")[-1])
@@ -291,7 +314,7 @@ class GetLocation:
                         ward = w
                         break
 
-            elif w_ul in address_ul:
+            elif w_sul in address_ul:
                 ward = w
                 break
 
@@ -308,8 +331,8 @@ class GetLocation:
         if random_user_agent_number:
             user_agent = f'{user_agent}{random.choice(list(range(1000)))}'
         locator = Nominatim(user_agent=user_agent)
-        location = locator.geocode(search_term)
         try:
+            location = locator.geocode(search_term)
             address = location.address
             latitude = location.latitude
             longitude = location.longitude
@@ -318,6 +341,7 @@ class GetLocation:
             return self.build_location(address=address, latitude=latitude, longitude=longitude, source=source)
 
         except Exception as e:
+            print(color('Red'), f'GeoPy: {e}')
             return Location(source='GeoPy', original_address=f'Error: {e}')
 
     @retry(wait=wait_fixed(30), stop=stop_after_attempt(10))
@@ -331,7 +355,7 @@ class GetLocation:
             data = res.json()
 
             if data.get('error_message') != None:
-                print(f'Google: {data.get("error_message")}')
+                print(color('Red'), f'Google: {data.get("error_message")}')
                 return Location(source='Google', original_address=f'Error: {data.get("error_message")}')
 
             latitude = data['results'][0]['geometry']['location']['lat']
@@ -426,47 +450,44 @@ class GetLocation:
         return location
 
     def check_if_district_in_address(self, district, address):
-        district_ul = unidecode(str(district).lower())
+        district_sul = get_district_sul(district)
         address_ul = unidecode(str(address).lower())
 
-        # Remove prefix
-        if re.search(r'quan [0-9]{1,2}', district_ul):
-            pass
-        else:
-            for i in [r'^quan\s', '^q\.', r'^huyen\s', r'^h\.', r'^thi xa\s', r'^tx\.', r'^xa\s', r'^x\.',
-                      r'^thanh pho\s',
-                      r'^tp\.']:
-                if re.search(i, district_ul):
-                    district_ul = re.sub(i, '', district_ul).strip()
-                    break
-
-        if district_ul in address_ul:
+        if district_sul in address_ul:
             return True
         else:
             return False
 
     def get_district_from_address_miss_province(self, province, address):
-        province_ul = unidecode(str(province).lower())
+        province_sul = get_province_sul(province)
         address_ul = unidecode(str(address).lower())
 
         address_ul = address_ul.replace('hanoi', 'ha noi')
 
-        search_province = self.df_vn_district.province.apply(unidecode).str.lower().str.contains(province_ul)
+        search_province = df_vn_district.province_sul.str.contains(province_sul)
 
         # Remove long-Province to reduce mistake (Thanh pho Lai Chau, Tinh Lai Chau)
-        long_province = unidecode(str(self.df_vn_district[search_province].province.tolist()[0]).lower())
-        address_ul = address_ul.replace(long_province, '')
+        try:
+            long_province = unidecode(str(df_vn_district[search_province].province.tolist()[0]).lower())
+            address_ul = address_ul.replace(long_province, '')
+        except:
+            pass
 
-        search_district = self.df_vn_district.district.apply(self.check_if_district_in_address, address=address_ul)
+        search_district = df_vn_district.district.apply(self.check_if_district_in_address, address=address_ul)
 
         try:
-            district = self.df_vn_district[search_province & search_district].district.tolist()[0]
+            district = df_vn_district[search_province & search_district].district.tolist()[0]
         except:
             district = 'No-data'
 
         return district
 
     def get_valid_district(self, province, search_term, force_data_excel=None, google_maps_api_key=None, print_result=None):
+
+        if province == None or province == '' or province == 'No-data':
+            print(f'{color("Red")}Province is invalid ({province}), skip and return "Province-invalid"!')
+            return 'Province-invalid'
+
         if force_data_excel == None:
             force_data_excel = self.force_data_excel
         if google_maps_api_key == None:
@@ -475,20 +496,21 @@ class GetLocation:
             print_result = self.print_result
 
         search_term = str(search_term)
+        province = Correct().correct_province(province)
 
         # Get address
         location = self.get_location(search_term=search_term, google_maps_api_key=google_maps_api_key, force_data_excel=force_data_excel)
 
         if location.province == province and location.district != None:
             if print_result:
-                print(f'{location.district} district match with {province} province perfect! ({location.source})')
+                print(f'{color("Green")}{location.district}{color("Black")} math with {color("Green")}{province}{color("Black")} perfect! {color("White")}({location.source})')
             return location.district
 
         if location.province == None and 'No-data' not in location.original_address and 'Error' not in location.original_address:
             district = self.get_district_from_address_miss_province(province=province, address=location.original_address)
             if district != 'No-data':
                 if print_result:
-                    print(f'{district} district match with {province} province when missing info! ({location.source})')
+                    print(f'{color("Green")}{district}{color("Black")} math with {color("Green")}{province}{color("Black")} when missing info! {color("White")}({location.source})')
                 return district
 
         if (location.source not in ['Google', 'Excel']) and (google_maps_api_key != None):
@@ -497,11 +519,11 @@ class GetLocation:
                 self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
                 if location.province == province and location.district != None:
                     if print_result:
-                        print(f'{location.district} district match with {province} province perfect! ({location.source})')
+                        print(f'{color("Green")}{location.district}{color("Black")} math with {color("Green")}{province}{color("Black")} perfect! {color("White")}({location.source})')
                     return location.district
             except Exception as e:
                 location = Location(source='Google', original_address=f'Error: {e}')
 
         # Can not find district from address, return address to explore later
-        print(f'Can not match district for {province} province, return address! ({location.source})')
+        print(f'Can not match {color("Red")}{location.address}{color("Black")} with {color("Red")}{province}{color("Black")}, return address! {color("White")}({location.source})')
         return f'Not-match: {location.address} ({location.source})'
