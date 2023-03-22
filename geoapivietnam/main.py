@@ -203,7 +203,7 @@ class Correct:
                         print(f'{color("White")}{province}{color("Default")} is correct to {color("Green")}{o}{color("Default")} by Fuzzy!')
                     is_match = True
                     return o
-        if is_match == False:
+        if is_match == False and self.print_result:
             print(f'Can not correct for {color("Red")}{province}{color("Default")}, return "No-data"')
         return 'No-data'
 
@@ -235,7 +235,7 @@ class Correct:
                         print(f'{color("White")}{district}{color("Default")} is correct to {color("Green")}{d}{color("Default")} by Fuzzy!')
                     is_match = True
                     return d
-        if is_match == False:
+        if is_match == False and self.print_result:
             print(f'Can not correct for {color("Red")}{district}{color("Default")}, return "No-data"')
         return 'No-data'
 
@@ -545,5 +545,6 @@ class GetLocation:
                 location = Location(source='Google', original_address=f'Error: {e}')
 
         # Can not find district from address, return address to explore later
-        print(f'Can not match {color("Red")}{location.address}{color("Default")} with {color("Red")}{province}{color("Default")}, return address! {color("White")}({location.source})')
+        if print_result:
+            print(f'Can not match {color("Red")}{location.address}{color("Default")} with {color("Red")}{province}{color("Default")}, return address! {color("White")}({location.source})')
         return f'Not-match: {location.address} ({location.source})'
