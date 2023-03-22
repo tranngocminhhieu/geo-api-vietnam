@@ -503,14 +503,14 @@ class GetLocation:
 
         if location.province == province and location.district != None:
             if print_result:
-                print(f'{color("Green")}{location.district}{color("Black")} math with {color("Green")}{province}{color("Black")} perfect! {color("White")}({location.source})')
+                print(f'{color("Green")}{location.district}{color("Black")} match with {color("Green")}{province}{color("Black")} perfect! {color("White")}({location.source})')
             return location.district
 
         if location.province == None and 'No-data' not in location.original_address and 'Error' not in location.original_address:
             district = self.get_district_from_address_miss_province(province=province, address=location.original_address)
             if district != 'No-data':
                 if print_result:
-                    print(f'{color("Green")}{district}{color("Black")} math with {color("Green")}{province}{color("Black")} when missing info! {color("White")}({location.source})')
+                    print(f'{color("Green")}{district}{color("Black")} match with {color("Green")}{province}{color("Black")} when missing info! {color("White")}({location.source})')
                 return district
 
         if (location.source not in ['Google', 'Excel']) and (google_maps_api_key != None):
@@ -519,7 +519,7 @@ class GetLocation:
                 self.sqlite_actions.append_or_update_data(search_term=search_term, json_data=location.json_data)
                 if location.province == province and location.district != None:
                     if print_result:
-                        print(f'{color("Green")}{location.district}{color("Black")} math with {color("Green")}{province}{color("Black")} perfect! {color("White")}({location.source})')
+                        print(f'{color("Green")}{location.district}{color("Black")} match with {color("Green")}{province}{color("Black")} perfect! {color("White")}({location.source})')
                     return location.district
             except Exception as e:
                 location = Location(source='Google', original_address=f'Error: {e}')
