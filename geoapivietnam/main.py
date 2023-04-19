@@ -221,13 +221,25 @@ class Correct:
         # Search
         for p_sul, d_sul, d in zip(df_vn_district.province_sul, df_vn_district.district_sul, df_vn_district.district):
 
-            if province_sul in p_sul and district_sul in d_sul:
+            # Prevent quan 1 match with quan 1X
+            if re.search(r'quan [0-9]{1,2}', d_sul):
+                our_district_number = int(d_sul.split(" ")[-1])
+                find_address_district = re.findall(r'quan [0-9]{1,2}', district_sul)
+                if len(find_address_district):
+                    address_district_number = int(find_address_district[0].split(" ")[-1])
+                    if address_district_number == our_district_number:
+                        if self.print_result:
+                            print(f'{color("White")}{district}{color("Default")} is correct to {color("Green")}{d}{color("Default")}')
+                        is_match = True
+                        return d
+
+            elif province_sul in p_sul and (district_sul in d_sul or d_sul in district_sul): # Khong biet tai sao dung if thi sai, elif thi dung
                 if self.print_result:
                     print(f'{color("White")}{district}{color("Default")} is correct to {color("Green")}{d}{color("Default")}')
                 is_match = True
                 return d
 
-            if self.use_fuzzy:
+            elif self.use_fuzzy:
                 ratio_1 = self.get_fuzzy_ratio(province_sul, p_sul)
                 ratio_2 = self.get_fuzzy_ratio(district_sul, d_sul)
                 if ratio_1 >= fuzzy_ratio_province and ratio_2 >= fuzzy_ratio_district:
